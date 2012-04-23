@@ -9,12 +9,14 @@ try:
 except ImportError:
 	import json
 
+
 class Locale(models.Model):
 	name = models.CharField(max_length=255)
 	slug = models.SlugField()
-	
+
 	def __unicode__(self):
 		return self.name
+
 
 class BusinessEntity(models.Model):
 	name = models.CharField(max_length=255)
@@ -25,23 +27,25 @@ class BusinessEntity(models.Model):
 	twitter_name = models.CharField(max_length=50, blank=True, null=True)
 	facebook_name = models.CharField(max_length=50, blank=True, null=True)
 	youtube_name = models.CharField(max_length=50, blank=True, null=True)
-	
+
 	def __unicode__(self):
 		return self.name
-	
+
 	class Meta:
 		verbose_name_plural = 'business entities'
 
+
 class LocationCategory(MP_Node):
 	name = models.CharField(max_length=255)
-	
+
 	node_order_by = ['name']
-	
+
 	def __unicode__(self):
 		return self.name
-	
+
 	class Meta:
 		verbose_name_plural = 'location categories'
+
 
 class Location(models.Model):
 	business_entity = models.ForeignKey(BusinessEntity, related_name = 'locations')
@@ -52,9 +56,9 @@ class Location(models.Model):
 	postcode = models.CharField(max_length=16, blank=True, null=True)
 	point = models.PointField(blank=True, null=True,srid=27700)
 	products = models.ManyToManyField('Product', through='Offering')
-	
+
 	objects = models.GeoManager()
-	
+
 	def save(self, *args, **kwargs):
 		self.geocode()
 		super(Location, self).save()
@@ -62,7 +66,7 @@ class Location(models.Model):
 	def geocode(self):
 		if(self.postcode):
 			address = "%s, UK" % (self.postcode)
-		else:	
+		else:
 			address = "%s, %s, %s, UK" % (self.address, self.locale.name, self.postcode)
 		lookup_url = "http://maps.googleapis.com/maps/api/geocode/json?address=%s&sensor=false" % urllib.quote(address.encode("utf-8"))
 		print lookup_url
@@ -72,44 +76,46 @@ class Location(models.Model):
 			lat_lng = response['results'][0]['geometry']['location']
 			self.point = Point(lat_lng['lng'], lat_lng['lat'])
 		return self.point
-	
+
 	@property
 	def qualified_name(self):
 		if self.name:
 			return "%s - %s" % (self.business_entity.name, self.name)
 		else:
 			return self.business_entity.name
-	
+
 	@property
 	def lng(self):
 		if self.point:
 			return self.point.x
+
 	@property
 	def lat(self):
 		if self.point:
 			return self.point.y
+
 	@property
 	def distance_metres(self):
 		if self.distance:
 			return self.distance.m
-	
+
 	def __unicode__(self):
 		return self.qualified_name
-
 
 
 class ProductCategory(MP_Node):
 	name = models.CharField(max_length=255)
 	description = models.TextField(blank=True, null=True)
 	url = models.URLField(blank=True, null=True)
-	
+
 	node_order_by = ['name']
-	
+
 	def __unicode__(self):
 		return self.name
-	
+
 	class Meta:
 		verbose_name_plural = 'product categories'
+
 
 class Product(models.Model):
 	name = models.CharField(max_length=255)
@@ -119,24 +125,20 @@ class Product(models.Model):
 	url = models.URLField(blank=True, null=True)
 	fairtrade_org_uk_key = models.CharField(max_length=255, blank=True, null=True)
 	locations = models.ManyToManyField('Location', through='Offering')
-	
+
 	@property
 	def qualified_name(self):
 		if self.manufacturer:
 			return "%s %s" % (self.manufacturer.name, self.name)
 		else:
 			return self.name
-	
+
 	def __unicode__(self):
 		return self.qualified_name
 
 class Offering(models.Model):
 	location = models.ForeignKey(Location, related_name='offerings')
 	product = models.ForeignKey(Product, related_name='offerings')
-	
+
 	def __unicode__(self):
 		return "%s at %s" % (self.product, self.location)
-
-
-
-    

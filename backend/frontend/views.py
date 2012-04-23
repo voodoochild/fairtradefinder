@@ -8,10 +8,9 @@ from core.models import *
 
 import collections
 
+
 def homePage(request):
-
 	return render_to_response('home.html')
-
 
 
 def locationList(request):
@@ -33,61 +32,61 @@ def locationList(request):
 		base = base.distance(my_location).order_by('distance')
 		if request.GET.get('max_distance'):
 			base = base.filter(point__distance_lte=(my_location, D(m=10000)))
-		title = title + " nearby"	
+		title = title + " nearby"
 
 	paginator = Paginator(base, 20)
-
 	page = request.GET.get('page',1)
 
 	try:
 	    basePage = paginator.page(page)
 	except PageNotAnInteger:
-	    # If page is not an integer, deliver first page.
 	    basePage = paginator.page(1)
 	except EmptyPage:
-	    # If page is out of range (e.g. 9999), deliver last page of results.
 	    basePage = paginator.page(paginator.num_pages)
-	
-	
 
 	return render_to_response('location_listings.html', {'list': basePage,'title':title})
-	
+
 
 def locationView(request,location_id):
-	location = get_object_or_404(Location,pk=location_id)
+	location = get_object_or_404(Location, pk=location_id)
+	products = create_product_map(location.products.all())
 
-	products = {} #Creates a products dictionary
-	for product in location.products.all(): #Loops through the available products
-		try: #Try to append a value to our existing list
-			products[product.category.name].append(product)
-		except: #In the event a list doesn't already exist we need to create it
-			products[product.category.name] = [product]
-
-	return render_to_response('location_detail.html', {'location': location,'products': products})
+	return render_to_response('location_detail.html', {
+		'location': location,
+		'products': products
+	})
 
 
 
 def productList(request):
-	base = Product.objects.all()
-	
-	products = {} #Creates a products dictionary
-	for product in base: #Loops through the available products
-		try: #Try to append a value to our existing list
-			products[product.category.name].append(product)
-		except: #In the event a list doesn't already exist we need to create it
-			products[product.category.name] = [product]
+	products = create_product_map(Product.objects.all())
 
 	return render_to_response('product_listings.html', {'products': products})
 
 
 def productView(request,product_id):
-	product = get_object_or_404(Product,pk=product_id)
+	product = get_object_or_404(Product, pk=product_id)
 
 	lat = request.session.get('lat')
 	lng = request.session.get('lng')
 
-	locations = {} #Creates a products dictionary
-	
-	return render_to_response('product_detail.html', {'product': product,'locations': locations,'lat':lat,'lng':lng})
+	locations = {}
+
+	return render_to_response('product_detail.html', {
+		'product': product,
+		'locations': locations,
+		'lat': lat,
+		'lng': lng
+	})
 
 
+def create_product_map(source):
+	products = {}
+	for product in source:
+		category = product.category.name.capitalize().replace('_', ' ')
+		try:
+			products[category].append(product)
+		except:
+			products[category] = [product]
+
+	return products
